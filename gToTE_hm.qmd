@@ -1,0 +1,241 @@
+# Compare correlation
+
+Compare random genes to transposable elements in human
+
+![](results_hm/gToTE_seed47_iter100.jpg)
+
+```{r}
+library(dplyr)
+
+kznfs <- read.csv("results_hm/kznfs_vs_TE_corr.csv")
+
+csv_files <- list.files(path="results_hm", pattern = "^gene_.*\\.csv$")
+
+for (file in csv_files) {
+    
+    prefix <- gsub("^gene_(.*?)\\.csv$", "\\1", file)
+    
+    assign(paste0("gene_", prefix), read.csv(file.path('results_hm', file)))
+}
+
+
+kznfs %>% filter(padj<0.001) %>% nrow()
+```
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+df_1_sig <- gene_12_vs_TE_corr %>%
+    filter(padj<0.01) %>%
+    mutate(class="gene")
+
+df_kznfs_sig <- kznfs %>%
+    filter(padj<0.01) %>%
+    mutate(class="kznfs")
+
+combine_df <- rbind(df_1_sig, df_kznfs_sig)
+
+ggplot(combine_df, aes(x=coef, color=class)) +
+    geom_histogram(fill="white", position="dodge") +
+    facet_wrap(~class) +
+    theme_bw()
+```
+
+```{r}
+df_1_sig <- gene_1_vs_TE_corr %>%
+    filter(padj<0.001 & abs(coef)>0.5) %>%
+    mutate(class="gene")
+
+df_kznfs_sig <- kznfs %>%
+    filter(padj<0.001 & abs(coef)>0.5) %>%
+    mutate(class="kznfs")
+
+combine_df <- rbind(df_1_sig, df_kznfs_sig)
+
+ggplot(combine_df, aes(x=coef, color=class)) +
+    geom_histogram(fill="white", position="dodge") +
+    facet_wrap(~class) +
+    theme_bw()
+```
+
+```{r}
+get_link <- function(padj_v=0.001){
+    
+    df_link <- data.frame(matrix(ncol=3, nrow=0))
+        colnames(df_link) <- c("KZNF_link", "coef" ,"pvalue")
+    
+    for (coef_v in seq(0.3, 1, by=0.05)){
+        
+        link_count <- c()
+        
+        df_kznf_sig_temp <- kznfs %>%
+            filter(padj<padj_v & abs(coef) >= coef_v)
+        
+        for (i in 1:100){
+            
+            df_name <- paste0("gene_", i, "_vs_TE_corr")
+            
+            df_temp <- get(df_name)
+            df_temp_sig <- df_temp %>%
+                filter(padj<padj_v & abs(coef) >= coef_v)
+            
+            link_count <- c(link_count, nrow(df_temp_sig))
+            
+        }
+        
+        more_link <- sum(nrow(df_kznf_sig_temp) < link_count) / 100
+        
+        
+        df_link <- rbind(
+            data.frame(KZNF_link=nrow(df_kznf_sig_temp),
+                       coef=coef_v,
+                       pvalue=more_link), 
+            df_link)
+    }
+
+    df_link
+}
+```
+
+```{r}
+get_neg_link <- function(padj_v=0.001){
+    
+    df_link <- data.frame(matrix(ncol=3, nrow=0))
+        colnames(df_link) <- c("KZNF_link", "coef" ,"pvalue")
+    
+    for (coef_v in seq(-1, -0.3, by=0.05)){
+        
+        link_count <- c()
+        
+        df_kznf_sig_temp <- kznfs %>%
+            filter(padj<padj_v & coef <= coef_v)
+        
+        for (i in 1:100){
+            
+            df_name <- paste0("gene_", i, "_vs_TE_corr")
+            
+            df_temp <- get(df_name)
+            df_temp_sig <- df_temp %>%
+                filter(padj<padj_v & coef <= coef_v)
+            
+            link_count <- c(link_count, nrow(df_temp_sig))
+            
+        }
+        
+        more_link <- sum(nrow(df_kznf_sig_temp) < link_count) / 100
+        
+        
+        df_link <- rbind(
+            data.frame(KZNF_link=nrow(df_kznf_sig_temp),
+                       coef=coef_v,
+                       pvalue=more_link), 
+            df_link)
+    }
+
+    df_link
+}
+```
+
+```{r}
+get_pos_link <- function(padj_v=0.001){
+    
+    df_link <- data.frame(matrix(ncol=3, nrow=0))
+        colnames(df_link) <- c("KZNF_link", "coef" ,"pvalue")
+    
+    for (coef_v in seq(0.3, 1, by=0.05)){
+        
+        link_count <- c()
+        
+        df_kznf_sig_temp <- kznfs %>%
+            filter(padj<padj_v & coef >= coef_v)
+        
+        for (i in 1:100){
+            
+            df_name <- paste0("gene_", i, "_vs_TE_corr")
+            
+            df_temp <- get(df_name)
+            df_temp_sig <- df_temp %>%
+                filter(padj<padj_v & coef >= coef_v)
+            
+            link_count <- c(link_count, nrow(df_temp_sig))
+            
+        }
+        
+        more_link <- sum(nrow(df_kznf_sig_temp) < link_count) / 100
+        
+        
+        df_link <- rbind(
+            data.frame(KZNF_link=nrow(df_kznf_sig_temp),
+                       coef=coef_v,
+                       pvalue=more_link), 
+            df_link)
+    }
+
+    df_link
+}
+```
+
+```{r}
+df_bothSide <- get_link()
+df_negSide <- get_neg_link()
+df_posSide <- get_pos_link()
+
+df_bothSide$link <- "both"
+df_negSide$link <- "negative"
+df_posSide$link <- "positive"
+
+df_hm_combine <- rbind(df_bothSide, df_negSide, df_posSide)
+```
+
+```{r}
+df_hm_combine$pvalue_color <- cut(df_hm_combine$pvalue, breaks = c(-Inf, 0.05, Inf), labels=c("sig", "nosig"))
+
+# seed 47, iterations 100
+
+random_hm <- ggplot(df_hm_combine, aes(x=coef, y=KZNF_link/1000, color=pvalue_color)) +
+    geom_point() +
+    scale_color_manual(values=c(sig="red", nosig="black"))+
+    scale_x_continuous(breaks=seq(min(df_hm_combine$coef), max(df_hm_combine$coef), by=0.1)) +
+    scale_y_continuous(breaks=seq(0, 100, by=10)) +
+    facet_wrap(~link,nrow = 2) +
+    theme_bw()
+
+ggsave(random_hm, file="results_hm/gToTE_seed47_iter100.jpg", dpi=200, width = 12, height = 5)
+```
+
+Conclusion, we can consider using absolute coefficient larger than 0.6, then we will have 11029 TE:KRAB-ZNF including 10606 positive links and 423 negative links.
+
+Do we want more iteration? 1000?
+
+```{r}
+df_kznf_select <- kznfs %>%
+    filter(padj<0.001, abs(coef)>=0.6)
+#170 KZNFs and 570 TEs
+
+kznf_count <- df_kznf_select %>%
+    count(geneName, name = "link") 
+
+chipexo_enrich <- readxl::read_xlsx("ChIP_Exo_Tables/ChIP_exo_enriched.xlsx")
+df_chip <- as.data.frame(t(chipexo_enrich[,2:223]))
+rownames(df_chip) <- colnames(chipexo_enrich)[2:223]
+colnames(df_chip) <- chipexo_enrich$...1
+df_chip$geneName <- rownames(df_chip)
+
+# combine
+kznf_chip <- kznf_count %>%
+    inner_join(df_chip[,c(6,10)], by=c("geneName" = "geneName"))
+
+corr_result <- cor.test(kznf_chip$link, kznf_chip$SINE)
+
+ggplot(kznf_chip, aes(x=link, y=SINE)) +
+    geom_point()
+```
+
+```{r}
+kznf_chip_filter <- kznf_chip %>%
+    filter(link >= 5 )
+
+ggplot(kznf_chip_filter, aes(x=link, y=`Transposable elements`)) +
+    geom_point()
+```
