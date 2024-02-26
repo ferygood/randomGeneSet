@@ -1,0 +1,53 @@
+# Correlation estimation results
+
+## The 100 iterations result
+
+We first use 100 times of sampling 300 random genes with KRAB-ZNF genes to calculate correlations (seed47, 1:100).
+
+|                         | Human | Chimpanzee | Bonobo | Macaque |
+|-------------------------|-------|------------|--------|---------|
+| KRAB-ZNFs to TEs        | 1     | 1          | 1      | 1       |
+| Random gene sets to TEs | 100   | 100        | 100    | 100     |
+| Total files             | 101   | 101        | 101    | 101     |
+
+In human, we find it is suggested to use padj\<0.001, absolute coefficient \>= 0.6 to select our correlations. Using this threshold, we will have significant more correlations in KRAB-ZNFs than random gene sets (see the up-left panel: both). In total we have 11029 TE:KRAB-ZNF including 10606 positive links and 423 negative links.
+
+![](results_hm/gToTE_seed47_iter100.jpg)
+
+Next, we use the same method on other primates, including chimpanzee, bonobo, and macaque.
+
+## Compare with Peak Enrich data (ChIP-exo)
+
+We have 170 KRAB-ZNFs (padj\<0.001, coefficient\>=0.6) and ChIP-exo have 222 KRAB-ZNFs. However, we only have 100 overlapped.
+
+![](results_hm/ourLink_percentageChIPexo_allTE.jpg){width="305"}
+
+It looks like there is no correlation between the number of significant TE:KRAB-ZNF from our results with theirs. I also calculate the positive and negative results:
+
+![](results_hm/ourNegLink_percentageChIPexo_allTE.jpg){width="302"} ![](results_hm/ourPosLink_percentageChIPexo_allTE.jpg){width="300"}
+
+## Overlapped with specific pair of KRAB-ZNFs and TEs
+
+Compare with the significant enrichment of KRAB-ZNF to specific TE region data. We try to find the sweet spot for having overlapped counts with coefficient:
+
+![](results_hm/ourLink_coefficient_p005.jpg){width="686"}
+
+![](results_hm/ourLink_coefficient_p001.jpg)
+
+![](results_hm/overlapped_coefficient_p005.jpg)
+
+![](results_hm/overlapped_coefficient_p001.jpg)
+
+## Gene to Gene
+
+## Other species
+
+## Network analysis
+
+![](results_hm/coef0306_overlapped.png)
+
+This network includes 326 nodes and 561 edges. Nodes include 98 KRAB ZNFs and 228 TEs. Red links indicates the interaction link that has higher coefficient (absolute value larger than 0.6). KRAB-ZNF in purple and TEs in green.
+
+![](results_hm/coef06_overlapped.png){width="669"}
+
+The network (60 nodes and 50 edges) includes 20 KRAB ZNFs and 40 TEs. Only three links are negative (in blue) and the others are positive (in orange).

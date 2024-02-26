@@ -222,20 +222,265 @@ rownames(df_chip) <- colnames(chipexo_enrich)[2:223]
 colnames(df_chip) <- chipexo_enrich$...1
 df_chip$geneName <- rownames(df_chip)
 
+
+
 # combine
 kznf_chip <- kznf_count %>%
-    inner_join(df_chip[,c(6,10)], by=c("geneName" = "geneName"))
+    inner_join(df_chip[,c(3:8,10)], by=c("geneName" = "geneName"))
 
-corr_result <- cor.test(kznf_chip$link, kznf_chip$SINE)
+kznf_chip_scale <- cbind(kznfs=kznf_chip[,1], 
+                         as.data.frame(scale(kznf_chip[,c(2:8)])))
 
-ggplot(kznf_chip, aes(x=link, y=SINE)) +
-    geom_point()
+corr_result <- cor.test(kznf_chip_scale$link, kznf_chip_scale$`Transposable elements`)
+
+# Create the plot
+p <- ggplot(kznf_chip_scale, aes(x=link, y=`Transposable elements`)) +
+    geom_point(fill="#7ed2bb", color="#051453") +
+    geom_text(x = 3, y = -1.5, label = 
+                  paste("Coefficient:", round(corr_result$estimate, 2), "\n", 
+                        "p-value:", 
+                        format(corr_result$p.value, scientific=TRUE, digits=1)),
+              hjust = 1, vjust = 0, color = "red") +
+    xlab("normalized number of TE:KRAB-ZNF") +
+    ylab("normalized percentage of ChIP-exo overlapped with TE regions") +
+    theme_bw()
+
+ggsave(p, file="results_hm/ourLink_percentageChIPexo_allTE.jpg", 
+       width = 5, height = 5, dpi=200)
+
+```
+
+Let's try with negative correlation
+
+```{r}
+kznf_count_neg <- df_kznf_select %>%
+    filter(coef<0) %>%
+    count(geneName, name = "link") 
+
+# combine
+kznf_chip_neg <- kznf_count_neg %>%
+    inner_join(df_chip[,c(3:8,10)], by=c("geneName" = "geneName"))
+
+kznf_chip_scale_neg <- cbind(kznfs=kznf_chip_neg[,1], 
+                         as.data.frame(scale(kznf_chip_neg[,c(2:8)])))
+
+corr_result <- cor.test(kznf_chip_scale_neg$link, kznf_chip_scale_neg$`Transposable elements`)
+
+# Create the plot
+p_neg <- ggplot(kznf_chip_scale_neg, aes(x=link, y=`Transposable elements`)) +
+    geom_point(fill="#7ed2bb", color="#051453") +
+    geom_text(x = 3, y = -1.5, label = 
+                  paste("Coefficient:", round(corr_result$estimate, 2), "\n", 
+                        "p-value:", 
+                        format(corr_result$p.value, scientific=TRUE, digits=1)),
+              hjust = 1, vjust = 0, color = "red") +
+    xlab("normalized number of TE:KRAB-ZNF") +
+    ylab("normalized percentage of ChIP-exo overlapped with TE regions") +
+    ggtitle("Negative TE:KRAB-ZNF") +
+    theme_bw()
+
+ggsave(p_neg, file="results_hm/ourNegLink_percentageChIPexo_allTE.jpg", 
+       width = 5, height = 5, dpi=200)
+
+```
+
+with positive
+
+```{r}
+kznf_count_pos <- df_kznf_select %>%
+    filter(coef>0) %>%
+    count(geneName, name = "link") 
+
+# combine
+kznf_chip_pos <- kznf_count_pos %>%
+    inner_join(df_chip[,c(3:8,10)], by=c("geneName" = "geneName"))
+
+kznf_chip_scale_pos <- cbind(kznfs=kznf_chip_pos[,1], 
+                         as.data.frame(scale(kznf_chip_pos[,c(2:8)])))
+
+corr_result <- cor.test(kznf_chip_scale_pos$link, kznf_chip_scale_pos$`Transposable elements`)
+
+# Create the plot
+p_pos <- ggplot(kznf_chip_scale_pos, aes(x=link, y=`Transposable elements`)) +
+    geom_point(fill="#7ed2bb", color="#051453") +
+    geom_text(x = 3, y = -1.5, label = 
+                  paste("Coefficient:", round(corr_result$estimate, 2), "\n", 
+                        "p-value:", 
+                        format(corr_result$p.value, scientific=TRUE, digits=1)),
+              hjust = 1, vjust = 0, color = "red") +
+    xlab("normalized number of TE:KRAB-ZNF") +
+    ylab("normalized percentage of ChIP-exo overlapped with TE regions") +
+    ggtitle("Positive TE:KRAB-ZNF") +
+    theme_bw()
+
+ggsave(p_pos, file="results_hm/ourPosLink_percentageChIPexo_allTE.jpg", 
+       width = 5, height = 5, dpi=200)
 ```
 
 ```{r}
-kznf_chip_filter <- kznf_chip %>%
-    filter(link >= 5 )
+# to see percentage overlapped with different class of TE
+library(twice)
+library(stringr)
+data("hg19rmsk_info")
 
-ggplot(kznf_chip_filter, aes(x=link, y=`Transposable elements`)) +
-    geom_point()
+# LINE
+df_kznf_select_line <- df_kznf_select %>%
+    filter(teName %in% hg19rmsk_info[hg19rmsk_info$class_id=="LINE", ]$gene_id)
+
+# ERV
+erv_list <- hg19rmsk_info %>%
+    filter(str_detect(family_id, "^ERV"))
+
+df_kznf_select_erv <- df_kznf_select %>%
+    filter(teName %in% erv_list$gene_id)
+
+# SINE
+df_kznf_select_sine <- df_kznf_select %>%
+    filter(teName %in% hg19rmsk_info[hg19rmsk_info$class_id=="SINE", ]$gene_id)
+
+# DNA
+df_kznf_select_dna <- df_kznf_select %>%
+    filter(teName %in% hg19rmsk_info[hg19rmsk_info$class_id=="DNA", ]$gene_id)
+
+#SVA
+df_kznf_select_sva <- df_kznf_select %>%
+    filter(teName %in% hg19rmsk_info[hg19rmsk_info$class_id=="SVA", ]$gene_id)
+```
+
+Then we can filter the data based on the name list
+
+```{r}
+# for line
+kznf_chip_scale_line <- kznf_chip_scale %>%
+    filter(kznfs %in% df_kznf_select_line$geneName)
+
+corr_result <- cor.test(kznf_chip_scale_line$link, kznf_chip_scale_line$LINE)
+
+# Create the plot
+p_line <- ggplot(kznf_chip_scale_line, aes(x=link, y=LINE)) +
+    geom_point(fill="#7ed2bb", color="#051453") +
+    geom_text(x = 3, y = -1.5, label = 
+                  paste("Coefficient:", round(corr_result$estimate, 2), "\n", 
+                        "p-value:", 
+                        format(corr_result$p.value, scientific=TRUE, digits=1)),
+              hjust = 1, vjust = 0, color = "red") +
+    xlab("normalized number of TE:KRAB-ZNF") +
+    ylab("normalized percentage of ChIP-exo overlapped with LINE") +
+    theme_bw()
+
+ggsave(p, file="results_hm/ourLink_percentageChIPexo_allTE.jpg", 
+       width = 5, height = 5, dpi=200)
+```
+
+Overlapped match the enrichment of KZFPs within precise transposable element subfamilies. The score is -log 10 of the pvalue and the maximum achievable is 320 which means that value above 1.30103 is significant
+
+```{r}
+# Read the Excel file
+df_enrich <- readxl::read_xlsx("ChIP_Exo_Tables/kznfs_TEs_ChIP_exo.xlsx")
+
+# Convert the tibble to a data.frame
+df_enrich <- as.data.frame(df_enrich)
+
+# Set row names
+rownames(df_enrich) <- df_enrich$...1
+
+# Select all columns except the first one
+df_enrich_sig <- df_enrich[, -1]
+
+# Create an empty data frame
+df_enrich_filter <- data.frame(geneName = character(), teName = character(), pval = numeric())
+
+# Loop through every value in df_enrich_sig
+for (i in 1:nrow(df_enrich_sig)) {
+  for (j in 1:ncol(df_enrich_sig)) {
+    # Check if the value is larger than 1.30103
+    if (df_enrich_sig[i, j] > 1.30103) {
+      # If it is, rbind this information to the dataframe
+      df_enrich_filter <- rbind(
+          df_enrich_filter, 
+          data.frame(geneName = rownames(df_enrich_sig)[i], 
+                     teName = colnames(df_enrich_sig)[j], 
+                     pval = df_enrich_sig[i, j]))
+    }
+  }
+}
+
+library(tidyr)
+
+df_enrich_filter <- df_enrich_filter %>%
+  separate(teName, c("teClass", "teFamily", "teName"), sep = "/")
+df_enrich_filter[1058, "teName"] <- "MamRep605"
+df_enrich_filter[1059, "teName"] <- "MamRep605b"
+
+df_enrich_filter <- df_enrich_filter %>%
+    mutate(pair=paste0(teName, ":", geneName)) #2296
+
+df_kznf_select <- df_kznf_select %>%
+    mutate(pair=paste0(teName, ":", geneName)) #11029
+
+
+df_link_combine <- df_kznf_select %>%
+    inner_join(df_enrich_filter[,c(2,3,6)], 
+               join_by("pair"=="pair")) # only 50 overlapped
+
+write.csv(df_link_combine, file="coef06_overlap50.csv", row.names=F)
+```
+
+short summary:
+
+we have 50 overlapped with ChIP-exo data based on this criteria (padj\<0.001, abs(coef) \> 0.6). There are 20 unique KRAB-ZNFs and 40 TEs.
+
+```{r}
+# use coefficient 0.3
+df_kznfs_03 <- kznfs %>% 
+    filter(padj<0.001 & abs(coef)>=0.3) %>%
+    mutate(pair=paste0(teName, ":", geneName))
+
+df_link_combine_03 <- df_kznfs_03 %>%
+    inner_join(df_enrich_filter[,c(2,3,6)],
+               join_by("pair"=="pair"))
+
+df_link_combine_03_06 <- df_link_combine_03 %>%
+    mutate(group = ifelse(pair %in% df_link_combine$pair, "coef06", "coef03")) %>%
+    mutate(direction = ifelse(coef >= 0, "positive", "negative"))
+```
+
+There are in total 561 links using coefficient 0.3 including 50 of them has coefficient 0.6
+
+Then, we convert this result to a dataframe that can be visualize using cytoscape.
+
+```{r}
+library(RCy3)
+n1.node <- data.frame(
+    id=c(unique(df_link_combine_03_06$geneName), 
+         unique(df_link_combine_03_06$teName)))
+
+n1.edge <- df_link_combine_03_06[,c(1,2,8,9,10)]
+colnames(n1.edge) <- c("source", "target", "teFamily", "filter", "interaction")
+
+createNetworkFromDataFrames(n1.node, n1.edge)
+
+n1.node.static <- read.csv("results_hm/coef0306_node_static.csv")
+n1.node.static.filter <- n1.node.static %>%
+    select(c(5,7)) %>%
+    filter(Degree >= 4 & id %in% unique(df_link_combine_03_06$geneName))
+
+library(ggpubr)
+ggbarplot(n1.node.static.filter, x="id", y="Degree") +
+    coord_flip()
+
+```
+
+```{r}
+df_only06 <- df_link_combine_03_06 %>%
+    filter(group=="coef06")
+
+n2.node <- data.frame(
+    id=c(unique(df_only06$geneName), 
+         unique(df_only06$teName)))
+
+n2.edge <- df_only06[,c(1,2,8,9,10)]
+colnames(n2.edge) <- c("source", "target", "teFamily", "filter", "interaction")
+
+createNetworkFromDataFrames(n2.node, n2.edge)
 ```

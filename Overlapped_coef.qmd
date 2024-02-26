@@ -1,0 +1,183 @@
+# Explore threshold for coefficient and overlapped count
+
+```{r}
+library(dplyr)
+library(ggplot2)
+```
+
+```{r}
+#load data
+df_our <- read.csv("results_hm/kznfs_vs_TE_corr.csv")
+df_chipexo <- read.csv("ChIP_Exo_Tables/kznfs_TEs_ChIP_exo_modified.csv")
+```
+
+```{r}
+# 1.prepare pairs
+df_our <- df_our %>%
+    mutate(pair = paste0(teName, ":", geneName))
+    
+df_chipexo <- df_chipexo %>%
+    mutate(pair = paste0(teName, ":", geneName))
+
+# 2. let's create a dataframe with x is overlapped count and y is coefficient
+# let's try padj < 0.05 first
+
+generate_overlap_df <- function(padj_val=0.05){
+
+    df_temp <- data.frame(all=numeric(), 
+                      positive=numeric(),
+                      negative=numeric(),
+                      coef=numeric())
+    
+    for (coef_val in seq(0, 1, by = 0.05)) {
+    
+        df_pos <- df_our %>%
+            filter(padj < padj_val & coef >= coef_val) %>%
+            inner_join(df_chipexo[,c(2,3,6)], join_by("pair"=="pair"))
+        
+        df_neg <- df_our %>%
+            filter(padj < padj_val & coef <= -coef_val) %>%
+            inner_join(df_chipexo[,c(2,3,6)], join_by("pair"=="pair"))
+        
+        df_both <- df_our %>%
+            filter(padj < padj_val & abs(coef) >= coef_val) %>%
+            inner_join(df_chipexo[,c(2,3,6)], join_by("pair"=="pair"))
+    
+        df_temp <- rbind(df_temp, 
+                         data.frame(
+                             all = nrow(df_both),
+                             positive = nrow(df_pos),
+                             negative = nrow(df_neg),
+                             coef = coef_val
+                         ))
+    }
+    
+    df_temp
+}
+
+```
+
+```{r}
+#padj = 0.05
+df_1 <- generate_overlap_df()
+df1_long <- df_1 %>%
+    pivot_longer(cols = c(all, positive, negative), 
+                 names_to = "label", 
+                 values_to = "count")
+
+#padj = 0.001
+df_2 <- generate_overlap_df(padj=0.001)
+df_2_long <- df_2 %>%
+    pivot_longer(cols = c(all, positive, negative), 
+                 names_to = "label", 
+                 values_to = "count")
+```
+
+```{r}
+g_05 <- ggplot(df1_long, aes(x=coef, y=count, color=label)) +
+    geom_line() +
+    geom_point() +
+    scale_x_continuous(breaks=seq(0, 1, by=0.05)) +
+    scale_y_continuous(breaks=seq(0, 1000, by=25)) +
+    theme(axis.text.x = element_text(angle=45, vjust=0.5, hjust=1))+
+    ylab("overlapped TE:KRAB-ZNF") +
+    ggtitle("padj<0.05")+
+    theme_bw()
+```
+
+```{r}
+g_01 <- ggplot(df_2_long, aes(x=coef, y=count, color=label)) +
+    geom_line() +
+    geom_point() +
+    scale_x_continuous(breaks=seq(0, 1, by=0.05)) +
+    scale_y_continuous(breaks=seq(0, 1000, by=25)) +
+    theme(axis.text.x = element_text(angle=45, vjust=0.5, hjust=1))+
+    ylab("overlapped TE:KRAB-ZNF") +
+    ggtitle("padj<0.001") +
+    theme_bw()
+```
+
+```{r}
+ggsave(g_05, file="results_hm/overlapped_coefficient_p005.jpg", 
+       width=8, height=5, dpi=200)
+
+ggsave(g_01, file="results_hm/overlapped_coefficient_p001.jpg", 
+       width=8, height=5, dpi=200)
+```
+
+We also plot our own data:
+
+```{r}
+generate_our <- function(padj=0.05){
+    
+    df_temp <- data.frame(all=numeric(), 
+                      positive=numeric(),
+                      negative=numeric(),
+                      coef=numeric())
+    
+    for (coef_val in seq(0, 1, by = 0.05)) {
+    
+        df_pos <- df_our %>%
+            filter(padj < padj_val & coef >= coef_val)
+        
+        df_neg <- df_our %>%
+            filter(padj < padj_val & coef <= -coef_val)
+        
+        df_both <- df_our %>%
+            filter(padj < padj_val & abs(coef) >= coef_val) 
+    
+        df_temp <- rbind(df_temp, 
+                         data.frame(
+                             all = nrow(df_both),
+                             positive = nrow(df_pos),
+                             negative = nrow(df_neg),
+                             coef = coef_val
+                         ))
+    }
+    
+    df_temp_label <- df_temp %>%
+        pivot_longer(cols = c(all, positive, negative), 
+                 names_to = "label", 
+                 values_to = "count")
+    
+    df_temp_label
+    
+}
+```
+
+```{r}
+df_our_1 <- generate_our() #padj0.05
+df_our_2 <- generate_our(padj=0.001) #padj0.001
+```
+
+```{r}
+g_our_01 <- ggplot(df_our_1, aes(x=coef, y=count, color=label)) +
+    geom_line() +
+    geom_point() +
+    scale_x_continuous(breaks=seq(0, 1, by=0.05)) +
+    scale_y_continuous(breaks=seq(0, 180000, by=10000)) +
+    theme(axis.text.x = element_text(angle=45, vjust=0.5, hjust=1))+
+    ylab("our TE:KRAB-ZNF") +
+    ggtitle("padj<0.05") +
+    theme_bw()
+```
+
+```{r}
+g_our_02 <- ggplot(df_our_2, aes(x=coef, y=count, color=label)) +
+    geom_line() +
+    geom_point() +
+    scale_x_continuous(breaks=seq(0, 1, by=0.05)) +
+    scale_y_continuous(breaks=seq(0, 180000, by=10000)) +
+    theme(axis.text.x = element_text(angle=45, vjust=0.5, hjust=1))+
+    ylab("our TE:KRAB-ZNF") +
+    ggtitle("padj<0.001") +
+    theme_bw()
+```
+
+```{r}
+ggsave(g_our_01, file="results_hm/ourLink_coefficient_p005.jpg", 
+       width=8, height=5, dpi=200)
+
+ggsave(g_our_02, file="results_hm/ourLink_coefficient_p001.jpg", 
+       width=8, height=5, dpi=200)
+```
