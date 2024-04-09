@@ -2,5 +2,6 @@ results_hm/gene*.csv
 results_hm/kznf*.csv
 correlation_scripts/*.RData
 correlation_scripts/mayoCorrInput.Rda
+correlation_scripts/*.rds
 .Rhistory
 .Rproj.user

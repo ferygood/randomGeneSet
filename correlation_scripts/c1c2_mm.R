@@ -1,5 +1,5 @@
-.libPaths("/data/scratch2/yaochung41/RLib")
-source("functions.R")
+#.libPaths("/data/scratch2/yaochung41/RLib")
+#source("functions.R")
 
 library(TEKRABber)
 library(dplyr)
@@ -11,8 +11,9 @@ df_mm_gene <- mmGene[,c(-1)]
 rownames(df_mm_gene) <- mmGene$geneID
 
 # transposable elements
-mmTEexp <- mmTE %>% select(-c(1,2,3))
-rownames(mmTEexp) <- mmTE$name
+mmTE_temp <- mmTE[!duplicated(mmTE$name), ]
+mmTEexp <- mmTE_temp %>% select(-c(1,2,3))
+rownames(mmTEexp) <- mmTE_temp$name
 
 # genes covert to tpm
 sample_counts <- colSums(df_mm_gene)
@@ -87,26 +88,26 @@ for (i in 1:1000){
     df_c1 <- corrOrthologTE(
         geneInput = gene_c1,
         teInput = te_c1,
-        numCore = 10
+        numCore = 3
     )
 
     df_c2 <- corrOrthologTE(
         geneInput = gene_c2,
         teInput = te_c2,
-        numCore = 10
+        numCore = 3
     )
 
     df_c1_sig <- df_c1 %>% filter(padj<0.01)
     c1_negCount <- df_c1_sig %>% filter(coef<0) %>% nrow()
     c1_posCount <- df_c1_sig %>% filter(coef>0) %>% nrow()
-    file_c1 <- paste0("results_c1_mm/gene_", i, "_vs_TE_corr.csv")
-    write.csv(df_c1_sig, file=file_c1, row.names = F)
+    #file_c1 <- paste0("results_c1_mm/gene_", i, "_vs_TE_corr.csv")
+    #write.csv(df_c1_sig, file=file_c1, row.names = F)
 
     df_c2_sig <- df_c2 %>% filter(padj<0.01)
     c2_negCount <- df_c2_sig %>% filter(coef<0) %>% nrow()
     c2_posCount <- df_c2_sig %>% filter(coef>0) %>% nrow()
-    file_c2 <- paste0("results_c2_mm/gene_", i, "_vs_TE_corr.csv")
-    write.csv(df_c2_sig, file=file_c2, row.names = F)
+    #file_c2 <- paste0("results_c2_mm/gene_", i, "_vs_TE_corr.csv")
+    #write.csv(df_c2_sig, file=file_c2, row.names = F)
 
     c1_temp <- data.frame(
         neg_count = c1_negCount,
